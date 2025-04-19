@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>7天健康零食挑战计划</title>
+    <style>
+      .instructions {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 40px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 40px;
+        }
+
+        .stars-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+
+        .star-container {
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .star {
+            font-size: 48px;
+            color: #bdc3c7;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        .unlocked .star {
+            color: #e67e22;
+            text-shadow: 0 0 8px rgba(230, 126, 34, 0.5);
+        }
+
+        .active .star {
+            color: #f1c40f;
+            text-shadow: 0 0 10px #f1c40f;
+        }
+
+        .badge {
+            color: #7f8c8d;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+
+        .active .badge {
+            color: #2c3e50;
+            font-weight: bold;
+        }
+
+        .expired {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .day-marker {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #95a5a6;
+        }
+    </style>
+</head>
+<body>
+    <h1>7天健康零食挑战计划</h1>
+    <div class="stars-container" id="starsContainer"></div>
+    <div class="instructions">
+        使用说明：7天健康零食挑战打卡记录，每天打卡成功可点亮一颗星星，截止时间7日内。
+    </div>
+
+    <script>
+        const badgeNames = [
+            "垃圾零食侦察兵",
+            "黄金煎蛋侠",
+            "结界守护者",
+            "成分破译者",
+            "料理炼金师",
+            "定海神针持有者",
+            "零食终结者"
+        ];
+
+        // 存储数据初始化
+        const storage = {
+            startDate: localStorage.getItem('startDate') || '',
+            unlockedDays: JSON.parse(localStorage.getItem('unlockedDays')) || 0,
+            activatedDays: JSON.parse(localStorage.getItem('activatedDays')) || [],
+            lastActiveDate: localStorage.getItem('lastActiveDate') || ''
+        };
+
+        // 主初始化函数
+        function initialize() {
+            const today = getUTCDate();
+
+            // 首次访问设置起始日期
+            if (!storage.startDate) {
+                storage.startDate = today;
+                saveStorage();
+            }
+
+            // 计算已过去的天数
+            const daysPassed = calculateDaysPassed();
+            
+            // 自动解锁新天数
+            if (daysPassed > storage.unlockedDays) {
+                storage.unlockedDays = Math.min(daysPassed, 7);
+                saveStorage();
+            }
+
+            createStars();
+        }
+
+        // 创建星星元素
+        function createStars() {
+            const container = document.getElementById('starsContainer');
+            container.innerHTML = '';
+
+            badgeNames.forEach((name, index) => {
+                const dayNumber = index + 1;
+                const starContainer = document.createElement('div');
+                starContainer.className = 'star-container';
+
+                // 添加天数标记
+                const dayMarker = document.createElement('div');
+                dayMarker.className = 'day-marker';
+                dayMarker.textContent = `第${dayNumber}天`;
+                starContainer.appendChild(dayMarker);
+
+                // 设置状态
+                if (dayNumber <= storage.unlockedDays) {
+                    starContainer.classList.add('unlocked');
+                }
+                if (storage.activatedDays.includes(dayNumber)) {
+                    starContainer.classList.add('active');
+                }
+                if (dayNumber > storage.unlockedDays) {
+                    starContainer.classList.add('expired');
+                }
+
+                // 点击处理
+                starContainer.onclick = () => handleStarClick(dayNumber);
+
+                // 创建星星和徽章
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.innerHTML = '☆';
+
+                const badge = document.createElement('div');
+                badge.className = 'badge';
+                badge.textContent = name;
+
+                starContainer.appendChild(star);
+                starContainer.appendChild(badge);
+                container.appendChild(starContainer);
+            });
+        }
+
+        // 处理星星点击
+        function handleStarClick(dayNumber) {
+            const today = getUTCDate();
+            
+            // 验证条件
+            if (
+                dayNumber > storage.unlockedDays || // 超过解锁天数
+                storage.activatedDays.includes(dayNumber) || // 已激活
+                dayNumber !== storage.unlockedDays || // 只能点击当天解锁的
+                today === storage.lastActiveDate // 今日已操作
+            ) return;
+
+            // 更新数据
+            storage.activatedDays.push(dayNumber);
+            storage.lastActiveDate = today;
+            saveStorage();
+
+            createStars();
+        }
+
+        // 工具函数
+        function getUTCDate() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        function calculateDaysPassed() {
+            const startDate = new Date(storage.startDate);
+            const currentDate = new Date(getUTCDate());
+            return Math.floor((currentDate - startDate) / (86400000)) + 1;
+        }
+
+        function saveStorage() {
+            localStorage.setItem('startDate', storage.startDate);
+            localStorage.setItem('unlockedDays', storage.unlockedDays);
+            localStorage.setItem('activatedDays', JSON.stringify(storage.activatedDays));
+            localStorage.setItem('lastActiveDate', storage.lastActiveDate);
+        }
+
+        // 启动初始化
+        initialize();
+    </script>
+</body>
+</html>
